@@ -1,61 +1,61 @@
 import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import fetch from "node-fetch";
 import pkg from "pg";
-import dotenv from "dotenv";
 
 dotenv.config();
 
 const { Pool } = pkg;
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// PostgreSQL pool config
+// Setup PostgreSQL connection pool
 const pool = new Pool({
   host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
+  port: parseInt(process.env.DB_PORT) || 5432,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 });
 
-// POST /weather — fetch weather & save search
+// POST /weather route - get weather info and save search to DB
 app.post("/weather", async (req, res) => {
   const city = req.body.city;
 
   if (!city) {
-    return res.status(400).json({ error: "City is required" });
+    return res.status(400).json({ error: "City name is required" });
   }
 
   try {
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-        city
-      )}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    const weatherRes = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
     );
+    const weatherData = await weatherRes.json();
 
-    const data = await response.json();
-
-    if (data.cod !== 200) {
-      return res.status(404).json({ error: data.message || "City not found" });
+    if (weatherData.cod !== 200) {
+      return res.status(weatherData.cod).json({ error: weatherData.message });
     }
 
-    // Save city search to DB
-    await pool.query("INSERT INTO search_history(city) VALUES($1)", [data.name]);
+    // Save search to DB (optional, adjust your table/columns)
+    await pool.query(
+      "INSERT INTO search_history(city, searched_at) VALUES ($1, NOW())",
+      [city]
+    );
 
-    res.json(data);
+    res.json(weatherData);
   } catch (err) {
-    console.error("Error fetching weather or saving to DB:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error fetching weather:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /history — get recent search history
+// GET /history route - return last 5 searches
 app.get("/history", async (req, res) => {
   try {
     const result = await pool.query(
@@ -63,8 +63,8 @@ app.get("/history", async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching search history:", err);
-    res.status(500).json({ error: "Database error" });
+    console.error("Error fetching history:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
