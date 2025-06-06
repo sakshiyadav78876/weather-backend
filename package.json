@@ -1,0 +1,27 @@
+{
+  "name": "weather-backend",
+  "version": "1.0.0",
+  "description": "Backend for weather website using Express and PostgreSQL",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "weather",
+    "backend",
+    "express",
+    "nodejs",
+    "postgresql"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.16.0"
+  }
+}
